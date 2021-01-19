@@ -3,12 +3,13 @@ from sudoku import Sudoku
 
 
 class App:
-    def __init__(self, autorun=True):
+    def __init__(self, autorun=True, delay=100):
         self._running = True
         self.screen = None
         self.size = self.width, self.height = 650, 750
 
-        self.sudoku = Sudoku('hard1.txt')
+        self.delay = delay
+        self.sudoku = Sudoku('games/hard2.txt')
         self.console = ''
 
         if autorun: self.on_execute()
@@ -31,9 +32,12 @@ class App:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 if self.runBtn.collidepoint(event.pos):
-                    self.sudoku.solve()
+                    pygame.time.set_timer(pygame.USEREVENT+1, self.delay)
                 if self.stepBtn.collidepoint(event.pos):
                     self.console = self.sudoku.step()
+        if event.type == pygame.USEREVENT+1:
+            self.console = self.sudoku.step()
+            if self.sudoku.solved: pygame.time.set_timer(pygame.USEREVENT+1, 0)
 
     def on_loop(self):
         # Clear
