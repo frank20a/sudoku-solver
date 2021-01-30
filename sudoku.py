@@ -1,4 +1,4 @@
-import time
+from copy import deepcopy as copy
 
 
 def count(f, l):
@@ -6,6 +6,15 @@ def count(f, l):
     for sub in l:
         if f in sub: res += 1
     return res
+
+
+def get_least_branching(l):
+    temp = {}
+    for i, row in enumerate(l):
+        for j, cell in enumerate(row):
+            if len(cell) > 1: temp[(i, j)] = cell
+
+    return sorted(temp, key=lambda n: len(temp[n]))
 
 
 class Sudoku:
@@ -23,8 +32,10 @@ class Sudoku:
                             self.pending_extention.append((i, j))
 
     def extend_rules(self, x, y):
-        if len(self.board[x][y]) == 1: num = self.board[x][y][0]
-        else: return False
+        if len(self.board[x][y]) == 1:
+            num = self.board[x][y][0]
+        else:
+            return False
 
         # Extend to row
         for i in range(9):
@@ -45,13 +56,15 @@ class Sudoku:
                     pass
 
         # Extend to block
-        blockx = x//3; blocky = y//3
+        blockx = x // 3;
+        blocky = y // 3
         for i in range(3):
             for j in range(3):
-                if not (3*blockx + i == x and 3*blocky + j == y):
+                if not (3 * blockx + i == x and 3 * blocky + j == y):
                     try:
-                        self.board[3*blockx + i][3*blocky + j].remove(num)
-                        if len(self.board[3*blockx + i][3*blocky + j]) == 1: self.pending_extention.append((3*blockx + i, 3*blocky + j))
+                        self.board[3 * blockx + i][3 * blocky + j].remove(num)
+                        if len(self.board[3 * blockx + i][3 * blocky + j]) == 1: self.pending_extention.append(
+                            (3 * blockx + i, 3 * blocky + j))
                     except ValueError:
                         pass
 
@@ -59,25 +72,65 @@ class Sudoku:
         if len(self.board[x][y]) == 1: return False
 
         for num in self.board[x][y]:
-            if count(num, self.get_row(x, y)) == 1 or count(num, self.get_column(x, y)) == 1 or count(num, self.get_block(x, y)) == 1:
+            if count(num, self.get_row(x, y)) == 1 or count(num, self.get_col(x, y)) == 1 or count(num,
+                                                                                                   self.get_block(x,
+                                                                                                                  y)) == 1:
                 self.board[x][y] = [num]
                 self.pending_extention.append((x, y))
                 return True
         return False
 
+    def check_arc(self, cell: list, group: list, depth=0):
+        if len(group) == 0: return False
+
+        for num in cell:
+            temp = copy(group)
+            for i, c in enumerate(temp):
+                if num in temp[i]: temp[i].remove(num)
+
+            if any(map(lambda n: len(n) == 0, temp)):
+                return num
+
+            if self.check_arc(temp[0], sorted(temp[1:], key=lambda n: len(n))): return num
+
+        return False
+
     def step(self):
-        # Rule Propagation
+        # Check solved
         if self.check_solved(): return 'Solved'
 
+        # Rule Propagation
         if len(self.pending_extention) > 0:
             x, y = self.pending_extention.pop(0)
             self.extend_rules(x, y)
-            return 'Propagating Rules from ' + str(x+1) + ',' + str(y+1)
+            return 'Propagating Rules from ' + str(x + 1) + ',' + str(y + 1)
 
         # Confirming Single Values of Lines/Columns/Blocks
         for i in range(9):
             for j in range(9):
-                if self.check_singles(i, j): return 'Confirmed single on ' + str(i+1) + ',' + str(j+1)
+                if self.check_singles(i, j): return 'Confirmed single on ' + str(i + 1) + ',' + str(j + 1)
+
+        # Arc Consequence
+        coords = get_least_branching(self.board)
+        for i, j in coords:
+            # Check Row
+            group = self.get_row(x=i)
+            cell = group.pop(j)
+            res = self.check_arc(cell, group)
+            # Check Column
+            if not res:
+                group = self.get_col(y=j)
+                cell = group.pop(i)
+                res = self.check_arc(cell, group)
+            # Check Block
+            if not res:
+                group = self.get_block(x=i, y=j)
+                cell = group.pop((i % 3) + (j % 3) * 3)
+                res = self.check_arc(cell, group)
+
+            if res:
+                self.board[i][j].remove(res)
+                return 'Arc Consequence on ' + str(i) + ',' + str(j)
 
         return 'Stuck...'
 
@@ -90,17 +143,17 @@ class Sudoku:
         for row in self.board:
             for cell in row:
                 c += len(cell)
-        if c > 9**2: return False
+        if c > 9 ** 2: return False
         self.solved = True
         return True
 
     def get_row(self, x=0, y=None):
-        if 9 < x < 0 or 9 < y < 0: return False
-        return self.board[x]
+        if 9 < x < 0: return False
+        return copy(self.board[x])
 
-    def get_column(self, x=None, y=0):
-        if 9 < x < 0 or 9 < y < 0: return False
-        return [self.board[i][y] for i in range(9)]
+    def get_col(self, x=None, y=0):
+        if 9 < y < 0: return False
+        return copy([self.board[i][y] for i in range(9)])
 
     def get_block(self, x=0, y=0):
         if 9 < x < 0 or 9 < y < 0: return False
@@ -111,7 +164,7 @@ class Sudoku:
         for i in range(3):
             for j in range(3):
                 res.append(self.board[3 * blockx + i][3 * blocky + j])
-        return res
+        return copy(res)
 
     def print_lens(self):
         for row in self.board:
@@ -124,12 +177,15 @@ class Sudoku:
         for row in self.board:
             for cell in row:
                 try:
-                    if len(cell) > 1: res += '0  '
-                    else: res += str(cell[0]) + '  '
+                    if len(cell) > 1:
+                        res += '0  '
+                    else:
+                        res += str(cell[0]) + '  '
                 except IndexError:
                     print(cell)
             res += '\n'
         return res
+
 
 if __name__ == "__main__":
     S = Sudoku('hard1.txt')
@@ -137,4 +193,3 @@ if __name__ == "__main__":
         print(S)
         input()
         S.step()
-

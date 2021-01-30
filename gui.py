@@ -3,13 +3,13 @@ from sudoku import Sudoku
 
 
 class App:
-    def __init__(self, autorun=True, delay=100):
+    def __init__(self, autorun=True, delay=50):
         self._running = True
         self.screen = None
         self.size = self.width, self.height = 650, 750
 
         self.delay = delay
-        self.sudoku = Sudoku('games/hard2.txt')
+        self.sudoku = Sudoku('games/expert4.txt')
         self.console = ''
 
         if autorun: self.on_execute()
