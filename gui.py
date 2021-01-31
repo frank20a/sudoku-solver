@@ -1,4 +1,6 @@
 import pygame
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 from sudoku import Sudoku
 
 
@@ -8,8 +10,11 @@ class App:
         self.screen = None
         self.size = self.width, self.height = 650, 750
 
+        root = Tk()
+        root.withdraw()
+
         self.delay = delay
-        self.sudoku = Sudoku('games/expert4.txt')
+        self.sudoku = Sudoku(askopenfilename(parent=root, filetypes=(('Text', '*.txt'), ('All Files', '*.*')), initialdir='./games'))
         self.console = ''
 
         if autorun: self.on_execute()
