@@ -18,12 +18,12 @@ def get_least_branching(l):
 
 
 class Sudoku:
-    def __init__(self, loadfile=None):
+    def __init__(self, loadfile=None, depth=float('inf')):
         self.board = [[list(range(1, 10)) for j in range(9)] for i in range(9)]
-        self.solved = False
+        self.pending_extention = []
+        self.depth = depth
 
         if loadfile:
-            self.pending_extention = []
             with open(loadfile, 'r', encoding='utf-8') as file:
                 for i, row in enumerate(file.readlines()):
                     for j, cell in enumerate(row.split()):
@@ -80,25 +80,17 @@ class Sudoku:
                 return True
         return False
 
-    def check_arc(self, cell: list, group: list, depth=0):
-        if len(group) == 0: return False
+    def check_arc(self, x, y):
+        for num in self.board[x][y]:
+            deep = Sudoku(depth=self.depth - 1)
+            deep.board = copy(self.board)
 
-        for num in cell:
-            temp = copy(group)
-            for i, c in enumerate(temp):
-                if num in temp[i]: temp[i].remove(num)
-
-            if any(map(lambda n: len(n) == 0, temp)):
+            deep.board[x][y] = [num]
+            if not deep.solve():
                 return num
-
-            if self.check_arc(temp[0], sorted(temp[1:], key=lambda n: len(n))): return num
-
         return False
 
     def step(self):
-        # Check solved
-        if self.check_solved(): return 'Solved'
-
         # Rule Propagation
         if len(self.pending_extention) > 0:
             x, y = self.pending_extention.pop(0)
@@ -112,40 +104,38 @@ class Sudoku:
 
         # Arc Consequence
         coords = get_least_branching(self.board)
-        for i, j in coords:
-            # Check Row
-            group = self.get_row(x=i)
-            cell = group.pop(j)
-            res = self.check_arc(cell, group)
-            # Check Column
-            if not res:
-                group = self.get_col(y=j)
-                cell = group.pop(i)
-                res = self.check_arc(cell, group)
-            # Check Block
-            if not res:
-                group = self.get_block(x=i, y=j)
-                cell = group.pop((i % 3) + (j % 3) * 3)
-                res = self.check_arc(cell, group)
-
+        for x, y in coords:
+            res = self.check_arc(x, y)
             if res:
-                self.board[i][j].remove(res)
-                return 'Arc Consequence on ' + str(i) + ',' + str(j)
+                self.board[x][y].remove(res)
+                if len(self.board[x][y]) == 1: self.pending_extention.append((x, y))
+                return 'Arc Consequence on ' + str(x+1) + ',' + str(y+1)
 
         return 'Stuck...'
 
     def solve(self):
-        while not self.solved:
-            if self.step() is None: break
+        if self.depth <= 0: return True
 
-    def check_solved(self):
+        while not self.solved():
+            if self.step() == 'Stuck...': break
+            if self.broken():
+                return False
+        return True
+
+    def solved(self):
         c = 0
         for row in self.board:
             for cell in row:
                 c += len(cell)
         if c > 9 ** 2: return False
-        self.solved = True
         return True
+
+    def broken(self):
+        for row in self.board:
+            for cell in row:
+                if len(cell) == 0:
+                    return True
+        return False
 
     def get_row(self, x=0, y=None):
         if 9 < x < 0: return False
@@ -159,7 +149,7 @@ class Sudoku:
         if 9 < x < 0 or 9 < y < 0: return False
 
         res = []
-        blockx = x // 3;
+        blockx = x // 3
         blocky = y // 3
         for i in range(3):
             for j in range(3):
@@ -173,14 +163,24 @@ class Sudoku:
             print()
 
     def __str__(self):
-        res = ''
-        for row in self.board:
-            for cell in row:
+        res = 'depth: ' + str(self.depth) + '\n'
+        for x, row in enumerate(self.board):
+            for y, cell in enumerate(row):
                 try:
-                    if len(cell) > 1:
-                        res += '0  '
+                    if (x + 1) % 3 == 0 and x != 8: res += '\033[4m'
+                    if (y + 1) % 3 == 0 and y != 8:
+                        if len(cell) > 1:
+                            res += '0 |'
+                        else:
+                            res += str(cell[0]) + ' |'
                     else:
-                        res += str(cell[0]) + '  '
+                        if len(cell) > 1:
+                            res += '0'
+                            if y != 8: res += '  '
+                        else:
+                            res += str(cell[0])
+                            if y != 8: res += '  '
+                    if (x+1) % 3 == 0: res += '\033[0m'
                 except IndexError:
                     print(cell)
             res += '\n'
@@ -188,8 +188,8 @@ class Sudoku:
 
 
 if __name__ == "__main__":
-    S = Sudoku('hard1.txt')
-    while True:
-        print(S)
-        input()
-        S.step()
+    S = Sudoku('games/expert1.txt', depth=3)
+    print(S)
+    input()
+    S.solve()
+    print(S)

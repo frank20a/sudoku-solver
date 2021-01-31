@@ -37,7 +37,7 @@ class App:
                     self.console = self.sudoku.step()
         if event.type == pygame.USEREVENT+1:
             self.console = self.sudoku.step()
-            if self.sudoku.solved: pygame.time.set_timer(pygame.USEREVENT+1, 0)
+            if self.sudoku.solved(): pygame.time.set_timer(pygame.USEREVENT+1, 0)
 
     def on_loop(self):
         # Clear
